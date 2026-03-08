@@ -6,8 +6,6 @@ import lombok.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "work_items", indexes = {
@@ -17,6 +15,7 @@ import java.util.List;
         @Index(name = "idx_work_items_due_date", columnList = "dueDate")
 })
 @Getter
+@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
@@ -61,9 +60,11 @@ public class WorkItemJpaEntity {
         WorkItem item = WorkItem.create(
                 clientId, clientName, bizNo, type,
                 assignee, dueDate, memo,
-                null, null // tier/type 검증은 생성 시에만
+                null, null
         );
         item.setId(id);
+        item.setVersion(version);
+        item.setStatus(status);
         if (tags != null && !tags.isEmpty()) {
             item.updateTags(Arrays.asList(tags.split(",")));
         }
@@ -89,5 +90,17 @@ public class WorkItemJpaEntity {
                 .updatedAt(item.getUpdatedAt())
                 .version(item.getVersion())
                 .build();
+    }
+
+    public void update(WorkItem item) {
+        System.out.println("=== ENTITY UPDATE ===");
+        System.out.println("before status: " + this.status);
+        this.status = item.getStatus();
+        System.out.println("after status: " + this.status);
+        this.assignee = item.getAssignee();
+        this.dueDate = item.getDueDate();
+        this.memo = item.getMemo();
+        this.tags = item.getTags() == null ? "" : String.join(",", item.getTags());
+        this.updatedAt = item.getUpdatedAt();
     }
 }

@@ -122,4 +122,7 @@ public class WorkItem {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public long getVersion() { return version; }
+
+    public void setVersion(long version) { this.version = version; }
+    public void setStatus(WorkItemStatus status) { this.status = status; }
 }

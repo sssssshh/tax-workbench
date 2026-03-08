@@ -17,9 +17,17 @@ public class WorkItemRepositoryImpl implements WorkItemRepository {
 
     @Override
     public WorkItem save(WorkItem workItem) {
-        WorkItemJpaEntity entity = WorkItemJpaEntity.fromDomain(workItem);
-        WorkItemJpaEntity saved = jpaRepository.save(entity);
-        return saved.toDomain();
+        if (workItem.getId() == null) {
+            WorkItemJpaEntity entity = WorkItemJpaEntity.fromDomain(workItem);
+            WorkItemJpaEntity saved = jpaRepository.save(entity);
+            return saved.toDomain();
+        } else {
+            WorkItemJpaEntity entity = jpaRepository.findById(workItem.getId())
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 업무입니다."));
+            entity.update(workItem);
+            jpaRepository.flush(); 
+            return entity.toDomain();
+        }
     }
 
     @Override
