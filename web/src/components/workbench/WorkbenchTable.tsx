@@ -150,7 +150,7 @@ export default function WorkbenchTable({ items, query, onQueryChange }: Props) {
 
     if (colIndex === COL.STATUS) {
       return (
-        <div className={cellClass} style={{ width: 96 }}>
+        <div className={cellClass} style={{ width: 112 }}>
           {isEditingThis ? (
             <InlineEditor
               field="status"
@@ -172,7 +172,7 @@ export default function WorkbenchTable({ items, query, onQueryChange }: Props) {
 
     if (colIndex === COL.ASSIGNEE) {
       return (
-        <div className={cellClass} style={{ width: 96 }}>
+        <div className={cellClass} style={{ width: 112 }}>
           {isEditingThis ? (
             <InlineEditor
               field="assignee"
@@ -194,7 +194,7 @@ export default function WorkbenchTable({ items, query, onQueryChange }: Props) {
 
     if (colIndex === COL.DUE_DATE) {
       return (
-        <div className={cellClass} style={{ width: 112 }}>
+        <div className={cellClass} style={{ width: 150 }}>
           {isEditingThis ? (
             <InlineEditor
               field="dueDate"
@@ -253,35 +253,35 @@ export default function WorkbenchTable({ items, query, onQueryChange }: Props) {
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="bg-gray-50 border-b">
-            <th
-              onClick={() => handleSort('clientName')}
-              className="text-left px-4 py-3 font-semibold text-gray-600 w-32 cursor-pointer hover:bg-gray-100 select-none"
-            >
-              업체명<SortIcon col="clientName" />
-            </th>
-            <th className="text-left px-4 py-3 font-semibold text-gray-600 w-32">사업자번호</th>
-            <th className="text-left px-4 py-3 font-semibold text-gray-600 w-24">업무유형</th>
-            <th
-              onClick={() => handleSort('status')}
-              className="text-left px-4 py-3 font-semibold text-gray-600 w-24 cursor-pointer hover:bg-gray-100 select-none"
-            >
-              상태<SortIcon col="status" />
-            </th>
-            <th
-              onClick={() => handleSort('assignee')}
-              className="text-left px-4 py-3 font-semibold text-gray-600 w-24 cursor-pointer hover:bg-gray-100 select-none"
-            >
-              담당자<SortIcon col="assignee" />
-            </th>
-            <th
-              onClick={() => handleSort('dueDate')}
-              className="text-left px-4 py-3 font-semibold text-gray-600 w-28 cursor-pointer hover:bg-gray-100 select-none"
-            >
-              마감일<SortIcon col="dueDate" />
-            </th>
-            <th className="text-left px-4 py-3 font-semibold text-gray-600">메모</th>
-            <th className="text-left px-4 py-3 font-semibold text-gray-600 w-16">이력</th>
-          </tr>
+          <th
+            onClick={() => handleSort('clientName')}
+            className="text-left px-4 py-3 font-semibold text-gray-600 w-36 cursor-pointer hover:bg-gray-100 select-none"
+          >
+            업체명<SortIcon col="clientName" />
+          </th>
+          <th className="text-left px-4 py-3 font-semibold text-gray-600 w-44">사업자번호</th>
+          <th className="text-left px-4 py-3 font-semibold text-gray-600 w-36">업무유형</th>
+          <th
+            onClick={() => handleSort('status')}
+            className="text-left px-4 py-3 font-semibold text-gray-600 w-28 cursor-pointer hover:bg-gray-100 select-none"
+          >
+            상태<SortIcon col="status" />
+          </th>
+          <th
+            onClick={() => handleSort('assignee')}
+            className="text-left px-4 py-3 font-semibold text-gray-600 w-28 cursor-pointer hover:bg-gray-100 select-none"
+          >
+            담당자<SortIcon col="assignee" />
+          </th>
+          <th
+            onClick={() => handleSort('dueDate')}
+            className="text-left px-4 py-3 font-semibold text-gray-600 w-36 cursor-pointer hover:bg-gray-100 select-none"
+          >
+            마감일<SortIcon col="dueDate" />
+          </th>
+          <th className="text-left px-4 py-3 font-semibold text-gray-600">메모</th>
+          <th className="text-left px-4 py-3 font-semibold text-gray-600 w-24">이력</th>
+        </tr>
         </thead>
       </table>
 
@@ -312,14 +312,14 @@ export default function WorkbenchTable({ items, query, onQueryChange }: Props) {
                 }`}
                 onClick={() => setCursor(prev => ({ ...prev, row: rowIndex }))}
               >
-                <div className="px-4 font-medium w-32 truncate">{item.clientName}</div>
-                <div className="px-4 text-gray-500 w-32 truncate">{item.bizNo}</div>
-                <div className="px-4 w-24">{item.type}</div>
+                <div className="px-4 font-medium w-36 truncate">{item.clientName}</div>
+                <div className="px-4 text-gray-500 w-44 truncate">{item.bizNo}</div>
+                <div className="px-4 w-36 truncate">{item.type}</div>
                 {renderCell(item, rowIndex, COL.STATUS)}
                 {renderCell(item, rowIndex, COL.ASSIGNEE)}
                 {renderCell(item, rowIndex, COL.DUE_DATE)}
                 {renderCell(item, rowIndex, COL.MEMO)}
-                <div className="px-4 w-16">
+                <div className="px-4 w-24">
                   <button
                     onClick={() => navigate(`/audit/${item.id}`)}
                     className="text-blue-600 hover:underline text-xs"
