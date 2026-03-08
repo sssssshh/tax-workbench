@@ -1,11 +1,13 @@
 package com.taxworkbench.api.domain.workitem;
 
+import java.time.LocalDate;
+
 public record WorkItemQuery(
         String clientName,
         WorkItemStatus status,
         String assignee,
-        String dueDateFrom,
-        String dueDateTo,
+        LocalDate dueDateFrom,
+        LocalDate dueDateTo,
         int page,
         int size,
         String sortBy,

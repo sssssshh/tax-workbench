@@ -29,10 +29,12 @@ export interface WorkItemQuery {
   clientName?: string
   status?: WorkItemStatus
   assignee?: string
+  dueDateFrom?: string
+  dueDateTo?: string
   page?: number
   size?: number
   sortBy?: string
-  sortDir?: string
+  sortDir?: 'asc' | 'desc'
 }
 
 export interface AuditLog {
@@ -50,4 +52,12 @@ export interface ConflictData {
   currentVersion: number
   expectedVersion: number
   message: string
+}
+
+export interface ConflictError {
+  error: string
+  message: string
+  currentVersion: number
+  expectedVersion: number
+  currentData: WorkItem
 }

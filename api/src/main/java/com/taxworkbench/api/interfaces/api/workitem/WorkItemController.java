@@ -30,24 +30,35 @@ public class WorkItemController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<Map<String, Object>>> findAll(
-            @RequestParam(required = false) String clientName,
-            @RequestParam(required = false) WorkItemStatus status,
-            @RequestParam(required = false) String assignee,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir
+        @RequestParam(required = false) String clientName,
+        @RequestParam(required = false) WorkItemStatus status,
+        @RequestParam(required = false) String assignee,
+        @RequestParam(required = false) String dueDateFrom,
+        @RequestParam(required = false) String dueDateTo,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size,
+        @RequestParam(defaultValue = "createdAt") String sortBy,
+        @RequestParam(defaultValue = "desc") String sortDir
     ) {
         WorkItemQuery query = new WorkItemQuery(
-                clientName, status, assignee, null, null, page, size, sortBy, sortDir);
+            clientName,
+            status,
+            assignee,
+            dueDateFrom != null ? java.time.LocalDate.parse(dueDateFrom) : null,
+            dueDateTo != null ? java.time.LocalDate.parse(dueDateTo) : null,
+            page,
+            size,
+            sortBy,
+            sortDir
+        );
         WorkItemPage result = queryWorkItemUseCase.execute(query);
 
         return ResponseEntity.ok(ApiResponse.ok(Map.of(
-                "content", result.content().stream().map(WorkItemResponse::from).toList(),
-                "totalElements", result.totalElements(),
-                "totalPages", result.totalPages(),
-                "currentPage", result.currentPage(),
-                "size", result.size()
+            "content", result.content().stream().map(WorkItemResponse::from).toList(),
+            "totalElements", result.totalElements(),
+            "totalPages", result.totalPages(),
+            "currentPage", result.currentPage(),
+            "size", result.size()
         )));
     }
 

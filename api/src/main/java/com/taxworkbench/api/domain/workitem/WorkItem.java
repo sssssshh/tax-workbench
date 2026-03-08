@@ -97,10 +97,10 @@ public class WorkItem {
 
     // Optimistic Lock 버전 체크
     public void checkVersion(long expectedVersion) {
-        if (this.version != expectedVersion) {
-            throw new WorkItemConflictException(this.version, expectedVersion);
-        }
+    if (this.version != expectedVersion) {
+        throw new WorkItemConflictException(this.id, this.version, expectedVersion);
     }
+}
 
     public void incrementVersion() {
         this.version++;

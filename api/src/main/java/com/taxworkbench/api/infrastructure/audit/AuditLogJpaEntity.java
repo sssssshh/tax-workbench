@@ -7,8 +7,9 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "audit_logs", indexes = {
-        @Index(name = "idx_audit_entity", columnList = "entityType, entityId")
+        @Index(name = "idx_audit_entity", columnList = "entityType, entityId, changedAt")
 })
+
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor

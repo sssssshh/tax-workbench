@@ -22,14 +22,6 @@ public class UpdateWorkItemUseCase {
         WorkItem workItem = workItemRepository.findById(command.workItemId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "존재하지 않는 업무입니다: " + command.workItemId()));
-        
-        // 여기에 로그 추가
-        System.out.println("=== UPDATE DEBUG ===");
-        System.out.println("command.status(): " + command.status());
-        System.out.println("workItem.getStatus(): " + workItem.getStatus());
-        System.out.println("command.expectedVersion(): " + command.expectedVersion());
-        System.out.println("workItem.getVersion(): " + workItem.getVersion());
-        System.out.println("===================");
 
         // Optimistic Lock 체크
         workItem.checkVersion(command.expectedVersion());
@@ -38,11 +30,9 @@ public class UpdateWorkItemUseCase {
         List<FieldChange> changes = new ArrayList<>();
 
         if (command.status() != null && !command.status().equals(workItem.getStatus())) {
-            System.out.println("=== STATUS 변경 실행 ===");
             changes.add(new FieldChange("status",
                     workItem.getStatus().name(), command.status().name()));
             workItem.changeStatus(command.status());
-            System.out.println("변경 후 status: " + workItem.getStatus());
         }
         if (command.assignee() != null && !command.assignee().equals(workItem.getAssignee())) {
             changes.add(new FieldChange("assignee",

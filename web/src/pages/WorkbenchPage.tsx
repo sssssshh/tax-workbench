@@ -7,6 +7,7 @@ import FilterBar from '../components/workbench/FilterBar.tsx'
 import LoadingSpinner from '../components/common/LoadingSpinner.tsx'
 import { workItemApi } from '../api/workItemApi.ts'
 import type { WorkItemQuery } from '../types/workItem.ts'
+import BulkCreateModal from '../components/workbench/BulkCreateModal.tsx'
 
 export default function WorkbenchPage() {
   const [query, setQuery] = useState<WorkItemQuery>({
@@ -19,6 +20,7 @@ export default function WorkbenchPage() {
   const { data, isLoading } = useWorkItems(query)
   const { data: clients = [] } = useClients()
   const { mutateAsync: createWorkItem } = useCreateWorkItem()
+  const [showBulkModal, setShowBulkModal] = useState(false)
 
   const [form, setForm] = useState({
     clientId: '',
@@ -46,7 +48,14 @@ export default function WorkbenchPage() {
     <div className="min-h-screen bg-gray-50">
       {/* 헤더 */}
       <div className="bg-white border-b px-6 py-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-800">🧾 Tax Workbench</h1>
+      <h1 className="text-xl font-bold text-gray-800">🧾 Tax Workbench</h1>
+      <div className="flex gap-2">
+        <button
+          onClick={() => setShowBulkModal(true)}
+          className="px-4 py-2 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 font-medium"
+        >
+          📥 대량 등록
+        </button>
         <button
           onClick={() => setShowCreateModal(true)}
           className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 font-medium"
@@ -54,6 +63,7 @@ export default function WorkbenchPage() {
           + 업무 추가
         </button>
       </div>
+    </div>
 
       {/* 필터 */}
       <FilterBar
@@ -68,7 +78,11 @@ export default function WorkbenchPage() {
           <LoadingSpinner />
         ) : (
           <>
-            <WorkbenchTable items={data?.content ?? []} />
+            <WorkbenchTable
+              items={data?.content ?? []}
+              query={query}
+              onQueryChange={setQuery}
+            />
 
             {/* 페이지네이션 */}
             <div className="flex items-center justify-between px-4 py-3 border-t">
@@ -184,6 +198,13 @@ export default function WorkbenchPage() {
           </div>
         </div>
       )}
+      {showBulkModal && (
+      <BulkCreateModal
+        clients={clients}
+        onClose={() => setShowBulkModal(false)}
+      />
+    )}
     </div>
+    
   )
 }

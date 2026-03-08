@@ -93,10 +93,7 @@ public class WorkItemJpaEntity {
     }
 
     public void update(WorkItem item) {
-        System.out.println("=== ENTITY UPDATE ===");
-        System.out.println("before status: " + this.status);
         this.status = item.getStatus();
-        System.out.println("after status: " + this.status);
         this.assignee = item.getAssignee();
         this.dueDate = item.getDueDate();
         this.memo = item.getMemo();
