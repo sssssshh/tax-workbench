@@ -8,6 +8,7 @@ import com.taxworkbench.api.domain.workitem.WorkItemQuery;
 import com.taxworkbench.api.domain.workitem.WorkItemStatus;
 import com.taxworkbench.api.interfaces.api.common.ApiResponse;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -66,7 +67,7 @@ public class WorkItemController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<WorkItemResponse>> create(
-            @RequestBody WorkItemRequest.Create request) {
+            @Valid @RequestBody WorkItemRequest.Create request) {
         return ResponseEntity.ok(ApiResponse.ok(
                 WorkItemResponse.from(createWorkItemUseCase.execute(request.toCommand()))));
     }
@@ -74,19 +75,21 @@ public class WorkItemController {
     @PatchMapping("/{id}")
     public ResponseEntity<ApiResponse<WorkItemResponse>> update(
             @PathVariable Long id,
-            @RequestBody WorkItemRequest.Update request) {
+            @Valid @RequestBody WorkItemRequest.Update request) {
         return ResponseEntity.ok(ApiResponse.ok(
                 WorkItemResponse.from(updateWorkItemUseCase.execute(request.toCommand(id)))));
     }
 
     @PostMapping("/bulk")
-    public ResponseEntity<ApiResponse<Map<String, Integer>>> bulkCreate(
-            @RequestBody WorkItemRequest.BulkCreate request) {
+    public ResponseEntity<ApiResponse<BulkCreateResponse>> bulkCreate(
+            @Valid @RequestBody WorkItemRequest.BulkCreate request) {
         List<CreateWorkItemCommand> commands = request.items().stream()
                 .map(WorkItemRequest.Create::toCommand)
                 .toList();
-        int count = bulkCreateWorkItemUseCase.execute(commands);
-        return ResponseEntity.ok(ApiResponse.ok(Map.of("savedCount", count)));
+
+        BulkCreateResult result = bulkCreateWorkItemUseCase.execute(commands);
+
+        return ResponseEntity.ok(ApiResponse.ok(BulkCreateResponse.from(result)));
     }
 
     @GetMapping("/export")

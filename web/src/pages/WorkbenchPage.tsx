@@ -114,7 +114,7 @@ export default function WorkbenchPage() {
       </div>
 
       {/* 업무 생성 모달 */}
-      {showCreateModal && (
+        {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
             <h2 className="text-lg font-bold mb-4">새 업무 추가</h2>
@@ -198,12 +198,17 @@ export default function WorkbenchPage() {
           </div>
         </div>
       )}
+
       {showBulkModal && (
-      <BulkCreateModal
-        clients={clients}
-        onClose={() => setShowBulkModal(false)}
-      />
-    )}
+        <BulkCreateModal
+          isOpen={showBulkModal}
+          onClose={() => setShowBulkModal(false)}
+          onSuccess={() => {
+            setShowBulkModal(false)
+            setQuery(q => ({ ...q }))
+          }}
+        />
+      )}
     </div>
     
   )

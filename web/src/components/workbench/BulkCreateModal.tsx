@@ -1,141 +1,471 @@
-import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { workItemApi } from '../../api/workItemApi.ts'
-import type { Client } from '../../types/client.ts'
+import { useMemo, useState } from 'react'
+import { workItemApi } from '../../api/workItemApi'
 
-interface Props {
-  clients: Client[]
+type Props = {
+  isOpen: boolean
   onClose: () => void
+  onSuccess?: () => void
 }
 
-const TEMPLATE = `clientId,type,assignee,dueDate,memo
-1,FILING,김세무,2026-03-31,법인세 신고
-1,BOOKKEEPING,이세무,2026-03-31,기장 업무
-1,REVIEW,박세무,2026-03-31,검토 업무`
+type ParsedItem = {
+  clientId: number
+  type: string
+  assignee: string
+  dueDate: string
+  memo: string
+  tags: string[]
+}
 
-export default function BulkCreateModal({ clients, onClose }: Props) {
-  const [csvText, setCsvText] = useState(TEMPLATE)
-  const [result, setResult] = useState<{ savedCount: number } | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const queryClient = useQueryClient()
+type ParseResult = {
+  items: ParsedItem[]
+  parseErrors: string[]
+}
 
-  const { mutate: bulkCreate, isPending } = useMutation({
-    mutationFn: (items: {
-      clientId: number
-      type: string
-      assignee: string
-      dueDate: string
-      memo: string
-      tags: string[]
-    }[]) => workItemApi.bulkCreate(items),
-    onSuccess: (data) => {
-      setResult(data)
-      queryClient.invalidateQueries({ queryKey: ['workItems'] })
-    },
-    onError: () => {
-      setError('대량 등록 중 오류가 발생했습니다.')
+const CSV_HEADER = 'clientId,type,assignee,dueDate,memo,tags'
+
+export default function BulkCreateModal({ isOpen, onClose, onSuccess }: Props) {
+  const [csvText, setCsvText] = useState(CSV_HEADER)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitResult, setSubmitResult] = useState<null | {
+    savedCount: number
+    skippedCount: number
+    errors: string[]
+  }>(null)
+
+  const parsePreview = useMemo(() => parseCsvText(csvText), [csvText])
+
+  if (!isOpen) return null
+
+  const handleClose = () => {
+    if (isSubmitting) return
+    setSubmitResult(null)
+    onClose()
+  }
+
+  const handleFillExample = () => {
+    setCsvText(
+      [
+        CSV_HEADER,
+        '1,FILING,Kim,2026-03-31,3월 신고 업무,vat|march',
+        '2,BOOKKEEPING,Lee,2026-04-05,장부 기장,bookkeeping|monthly',
+      ].join('\n')
+    )
+  }
+
+  const handleSubmit = async () => {
+    setSubmitResult(null)
+
+    const { items, parseErrors } = parseCsvText(csvText)
+
+    if (parseErrors.length > 0) {
+      setSubmitResult({
+        savedCount: 0,
+        skippedCount: 0,
+        errors: parseErrors,
+      })
+      return
     }
-  })
 
-  const handleSubmit = () => {
-    setError(null)
-    setResult(null)
+    if (items.length === 0) {
+      setSubmitResult({
+        savedCount: 0,
+        skippedCount: 0,
+        errors: ['등록할 데이터가 없습니다.'],
+      })
+      return
+    }
 
     try {
-      const lines = csvText.trim().split('\n')
-      const headers = lines[0].split(',').map(h => h.trim())
-      
-      const items = lines.slice(1).map(line => {
-        const values = line.split(',').map(v => v.trim())
-        const row: Record<string, string> = {}
-        headers.forEach((h, i) => row[h] = values[i] || '')
+      setIsSubmitting(true)
+      const result = await workItemApi.bulkCreate(items)
+      setSubmitResult(result)
 
-        return {
-          clientId: Number(row.clientId),
-          type: row.type,
-          assignee: row.assignee,
-          dueDate: row.dueDate,
-          memo: row.memo,
-          tags: [],
-        }
-      }).filter(item => item.clientId && item.type)
-
-      if (items.length === 0) {
-        setError('유효한 데이터가 없습니다.')
-        return
+      if (result.savedCount > 0 && onSuccess) {
+        onSuccess()
       }
+    } catch (error: any) {
+      const responseData = error?.response?.data
 
-      bulkCreate(items)
-    } catch {
-      setError('CSV 형식이 올바르지 않습니다.')
+      if (responseData?.data && typeof responseData.data === 'object') {
+        const fieldErrors = Object.entries(responseData.data)
+          .map(([field, message]) => `${field}: ${String(message)}`)
+
+        setSubmitResult({
+          savedCount: 0,
+          skippedCount: 0,
+          errors: fieldErrors.length > 0 ? fieldErrors : ['대량 등록 중 오류가 발생했습니다.'],
+        })
+      } else {
+        setSubmitResult({
+          savedCount: 0,
+          skippedCount: 0,
+          errors: [responseData?.message || '대량 등록 중 오류가 발생했습니다.'],
+        })
+      }
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-2xl shadow-xl">
-        <h2 className="text-lg font-bold mb-1">📥 대량 업무 등록</h2>
-        <p className="text-sm text-gray-500 mb-4">
-          CSV 형식으로 여러 업무를 한 번에 등록할 수 있습니다.
-        </p>
-
-        {/* 고객사 ID 안내 */}
-        <div className="mb-3 p-3 bg-gray-50 rounded border text-xs">
-          <p className="font-semibold text-gray-600 mb-1">📋 등록된 고객사 ID</p>
-          <div className="flex flex-wrap gap-2">
-            {clients.map(c => (
-              <span key={c.id} className="px-2 py-1 bg-white border rounded">
-                {c.id}: {c.name} ({c.tier})
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* 업무 유형 안내 */}
-        <div className="mb-3 p-3 bg-blue-50 rounded border text-xs text-blue-700">
-          <p className="font-semibold mb-1">📌 업무 유형 (type)</p>
-          <span>FILING(신고) / BOOKKEEPING(기장) / REVIEW(검토) / ETC(기타)</span>
-        </div>
-
-        {/* CSV 입력 */}
-        <textarea
-          value={csvText}
-          onChange={e => setCsvText(e.target.value)}
-          rows={10}
-          className="w-full border rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="CSV 형식으로 입력해주세요"
-        />
-
-        {/* 오류 메시지 */}
-        {error && (
-          <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-600">
-            ❌ {error}
-          </div>
-        )}
-
-        {/* 성공 메시지 */}
-        {result && (
-          <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded text-sm text-green-600">
-            ✅ {result.savedCount}건이 성공적으로 등록되었습니다!
-          </div>
-        )}
-
-        <div className="flex gap-2 mt-4">
-          <button
-            onClick={handleSubmit}
-            disabled={isPending}
-            className="flex-1 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium disabled:opacity-50"
-          >
-            {isPending ? '등록 중...' : '대량 등록'}
-          </button>
-          <button
-            onClick={onClose}
-            className="flex-1 py-2 border border-gray-300 rounded hover:bg-gray-50 text-sm"
-          >
+    <div style={backdropStyle}>
+      <div style={modalStyle}>
+        <div style={headerStyle}>
+          <h2 style={{ margin: 0 }}>Bulk Create Work Items</h2>
+          <button onClick={handleClose} disabled={isSubmitting} style={closeButtonStyle}>
             닫기
+          </button>
+        </div>
+
+        <div style={sectionStyle}>
+          <p style={helpTextStyle}>
+            아래 형식의 CSV 텍스트를 붙여 넣으세요.
+          </p>
+          <code style={codeStyle}>{CSV_HEADER}</code>
+
+          <div style={{ marginTop: 8 }}>
+            <button type="button" onClick={handleFillExample} disabled={isSubmitting}>
+              예시 채우기
+            </button>
+          </div>
+        </div>
+
+        <div style={sectionStyle}>
+          <textarea
+            value={csvText}
+            onChange={(e) => setCsvText(e.target.value)}
+            rows={14}
+            style={textareaStyle}
+            disabled={isSubmitting}
+            placeholder={CSV_HEADER}
+          />
+        </div>
+
+        <div style={sectionStyle}>
+          <h3 style={sectionTitleStyle}>미리보기</h3>
+          <div style={summaryBoxStyle}>
+            <div>파싱된 행 수: {parsePreview.items.length}</div>
+            <div>파싱 오류 수: {parsePreview.parseErrors.length}</div>
+          </div>
+
+          {parsePreview.parseErrors.length > 0 && (
+            <div style={errorBoxStyle}>
+              <strong>파싱 오류</strong>
+              <ul style={listStyle}>
+                {parsePreview.parseErrors.slice(0, 10).map((err, idx) => (
+                  <li key={idx}>{err}</li>
+                ))}
+              </ul>
+              {parsePreview.parseErrors.length > 10 && (
+                <div>외 {parsePreview.parseErrors.length - 10}건</div>
+              )}
+            </div>
+          )}
+
+          {parsePreview.items.length > 0 && (
+            <div style={previewTableWrapperStyle}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>clientId</th>
+                    <th style={thStyle}>type</th>
+                    <th style={thStyle}>assignee</th>
+                    <th style={thStyle}>dueDate</th>
+                    <th style={thStyle}>memo</th>
+                    <th style={thStyle}>tags</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {parsePreview.items.slice(0, 5).map((item, idx) => (
+                    <tr key={idx}>
+                      <td style={tdStyle}>{item.clientId}</td>
+                      <td style={tdStyle}>{item.type}</td>
+                      <td style={tdStyle}>{item.assignee}</td>
+                      <td style={tdStyle}>{item.dueDate}</td>
+                      <td style={tdStyle}>{item.memo}</td>
+                      <td style={tdStyle}>{item.tags.join(', ')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {parsePreview.items.length > 5 && (
+                <div style={{ marginTop: 8 }}>
+                  외 {parsePreview.items.length - 5}건 더 있음
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {submitResult && (
+          <div style={sectionStyle}>
+            <h3 style={sectionTitleStyle}>실행 결과</h3>
+            <div style={resultBoxStyle}>
+              <div>저장 성공: {submitResult.savedCount}건</div>
+              <div>건너뜀: {submitResult.skippedCount}건</div>
+            </div>
+
+            {submitResult.errors.length > 0 && (
+              <div style={errorBoxStyle}>
+                <strong>오류 상세</strong>
+                <ul style={listStyle}>
+                  {submitResult.errors.slice(0, 20).map((err, idx) => (
+                    <li key={idx}>{err}</li>
+                  ))}
+                </ul>
+                {submitResult.errors.length > 20 && (
+                  <div>외 {submitResult.errors.length - 20}건</div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div style={footerStyle}>
+          <button onClick={handleClose} disabled={isSubmitting}>
+            취소
+          </button>
+          <button onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting ? '등록 중...' : '대량 등록'}
           </button>
         </div>
       </div>
     </div>
   )
+}
+
+function parseCsvText(text: string): ParseResult {
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  if (lines.length === 0) {
+    return {
+      items: [],
+      parseErrors: ['입력된 내용이 없습니다.'],
+    }
+  }
+
+  const [headerLine, ...dataLines] = lines
+  const normalizedHeader = headerLine.replace(/\s+/g, '')
+  const expectedHeader = CSV_HEADER.replace(/\s+/g, '')
+
+  if (normalizedHeader !== expectedHeader) {
+    return {
+      items: [],
+      parseErrors: [
+        `헤더가 올바르지 않습니다. 기대값: ${CSV_HEADER}`,
+      ],
+    }
+  }
+
+  const items: ParsedItem[] = []
+  const parseErrors: string[] = []
+
+  dataLines.forEach((line, index) => {
+    const rowNumber = index + 2
+    const cols = splitCsvLine(line)
+
+    if (cols.length < 6) {
+      parseErrors.push(`row ${rowNumber}: 컬럼 수가 부족합니다.`)
+      return
+    }
+
+    const [clientIdRaw, typeRaw, assigneeRaw, dueDateRaw, memoRaw, tagsRaw] = cols
+
+    const clientId = Number(clientIdRaw)
+    if (!Number.isInteger(clientId) || clientId <= 0) {
+      parseErrors.push(`row ${rowNumber}: clientId는 1 이상의 정수여야 합니다.`)
+      return
+    }
+
+    const type = (typeRaw || '').trim()
+    if (!type) {
+      parseErrors.push(`row ${rowNumber}: type은 필수입니다.`)
+      return
+    }
+
+    const dueDate = (dueDateRaw || '').trim()
+    if (dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
+      parseErrors.push(`row ${rowNumber}: dueDate는 YYYY-MM-DD 형식이어야 합니다.`)
+      return
+    }
+
+    const tags = (tagsRaw || '')
+      .split('|')
+      .map((v) => v.trim())
+      .filter(Boolean)
+
+    items.push({
+      clientId,
+      type,
+      assignee: (assigneeRaw || '').trim(),
+      dueDate,
+      memo: (memoRaw || '').trim(),
+      tags,
+    })
+  })
+
+  return { items, parseErrors }
+}
+
+/**
+ * 제출용 간단 파서입니다.
+ * - 큰따옴표로 감싼 값 내부의 쉼표를 허용
+ * - 이중 큰따옴표("") 이스케이프 허용
+ */
+function splitCsvLine(line: string): string[] {
+  const result: string[] = []
+  let current = ''
+  let inQuotes = false
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i]
+    const next = line[i + 1]
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        current += '"'
+        i++
+      } else {
+        inQuotes = !inQuotes
+      }
+      continue
+    }
+
+    if (char === ',' && !inQuotes) {
+      result.push(current)
+      current = ''
+      continue
+    }
+
+    current += char
+  }
+
+  result.push(current)
+
+  return result.map((v) => v.trim())
+}
+
+const backdropStyle: React.CSSProperties = {
+  position: 'fixed',
+  inset: 0,
+  backgroundColor: 'rgba(0, 0, 0, 0.35)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 1000,
+}
+
+const modalStyle: React.CSSProperties = {
+  width: 'min(920px, 92vw)',
+  maxHeight: '90vh',
+  overflow: 'auto',
+  background: '#fff',
+  borderRadius: 12,
+  padding: 20,
+  boxSizing: 'border-box',
+}
+
+const headerStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 16,
+}
+
+const footerStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'flex-end',
+  gap: 8,
+  marginTop: 20,
+}
+
+const sectionStyle: React.CSSProperties = {
+  marginBottom: 16,
+}
+
+const sectionTitleStyle: React.CSSProperties = {
+  marginTop: 0,
+  marginBottom: 8,
+}
+
+const helpTextStyle: React.CSSProperties = {
+  marginTop: 0,
+  marginBottom: 8,
+}
+
+const codeStyle: React.CSSProperties = {
+  display: 'inline-block',
+  padding: '6px 8px',
+  background: '#f4f4f4',
+  borderRadius: 6,
+}
+
+const textareaStyle: React.CSSProperties = {
+  width: '100%',
+  boxSizing: 'border-box',
+  fontFamily: 'monospace',
+  fontSize: 13,
+  padding: 12,
+}
+
+const summaryBoxStyle: React.CSSProperties = {
+  padding: 12,
+  background: '#f8f8f8',
+  borderRadius: 8,
+  display: 'grid',
+  gap: 4,
+}
+
+const resultBoxStyle: React.CSSProperties = {
+  padding: 12,
+  background: '#f3f8ff',
+  borderRadius: 8,
+  display: 'grid',
+  gap: 4,
+}
+
+const errorBoxStyle: React.CSSProperties = {
+  marginTop: 12,
+  padding: 12,
+  background: '#fff4f4',
+  border: '1px solid #ffd6d6',
+  borderRadius: 8,
+}
+
+const previewTableWrapperStyle: React.CSSProperties = {
+  marginTop: 12,
+  overflowX: 'auto',
+}
+
+const tableStyle: React.CSSProperties = {
+  width: '100%',
+  borderCollapse: 'collapse',
+}
+
+const thStyle: React.CSSProperties = {
+  textAlign: 'left',
+  borderBottom: '1px solid #ddd',
+  padding: 8,
+  background: '#fafafa',
+}
+
+const tdStyle: React.CSSProperties = {
+  borderBottom: '1px solid #eee',
+  padding: 8,
+  verticalAlign: 'top',
+}
+
+const listStyle: React.CSSProperties = {
+  margin: '8px 0 0 18px',
+  padding: 0,
+}
+
+const closeButtonStyle: React.CSSProperties = {
+  border: 'none',
+  background: 'transparent',
+  cursor: 'pointer',
+  fontSize: 14,
 }

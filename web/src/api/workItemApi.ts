@@ -1,6 +1,12 @@
 import axiosInstance from './axios.ts'
 import type { WorkItem, WorkItemPage, WorkItemQuery, AuditLog } from '../types/workItem.ts'
 
+export type BulkCreateApiResponse = {
+  savedCount: number
+  skippedCount: number
+  errors: string[]
+}
+
 export const workItemApi = {
   findAll: async (query: WorkItemQuery): Promise<WorkItemPage> => {
     const params = Object.fromEntries(
@@ -44,7 +50,7 @@ export const workItemApi = {
     dueDate: string
     memo: string
     tags: string[]
-  }[]): Promise<{ savedCount: number }> => {
+  }[]): Promise<BulkCreateApiResponse> => {
     const res = await axiosInstance.post('/api/v1/work-items/bulk', { items })
     return res.data.data
   },
