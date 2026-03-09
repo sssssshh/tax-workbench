@@ -3,9 +3,11 @@ package com.taxworkbench.api.infrastructure.persistence.workitem;
 import com.taxworkbench.api.domain.workitem.*;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.List;
 
 @Entity
 @Table(name = "work_items", indexes = {
@@ -45,7 +47,7 @@ public class WorkItemJpaEntity {
     private LocalDate dueDate;
 
     @Column(columnDefinition = "TEXT")
-    private String tags; // 콤마로 구분하여 저장
+    private String tags;
 
     @Column(columnDefinition = "TEXT")
     private String memo;
@@ -54,26 +56,37 @@ public class WorkItemJpaEntity {
     private LocalDateTime updatedAt;
 
     @Version
-    private long version; // JPA Optimistic Lock
+    private long version;
 
     public WorkItem toDomain() {
-        WorkItem item = WorkItem.create(
-                clientId, clientName, bizNo, type,
-                assignee, dueDate, memo,
-                null, null
+        List<String> tagList = (tags == null || tags.isBlank())
+                ? List.of()
+                : Arrays.stream(tags.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isBlank())
+                        .toList();
+
+        return WorkItem.restore(
+                id,
+                clientId,
+                clientName,
+                bizNo,
+                type,
+                status,
+                assignee,
+                dueDate,
+                tagList,
+                memo,
+                createdAt,
+                updatedAt,
+                version
         );
-        item.setId(id);
-        item.setVersion(version);
-        item.setStatus(status);
-        if (tags != null && !tags.isEmpty()) {
-            item.updateTags(Arrays.asList(tags.split(",")));
-        }
-        return item;
     }
 
     public static WorkItemJpaEntity fromDomain(WorkItem item) {
-        String tagsStr = item.getTags() == null ? "" :
-                String.join(",", item.getTags());
+        String tagsStr = item.getTags() == null || item.getTags().isEmpty()
+                ? ""
+                : String.join(",", item.getTags());
 
         return WorkItemJpaEntity.builder()
                 .id(item.getId())
@@ -90,14 +103,5 @@ public class WorkItemJpaEntity {
                 .updatedAt(item.getUpdatedAt())
                 .version(item.getVersion())
                 .build();
-    }
-
-    public void update(WorkItem item) {
-        this.status = item.getStatus();
-        this.assignee = item.getAssignee();
-        this.dueDate = item.getDueDate();
-        this.memo = item.getMemo();
-        this.tags = item.getTags() == null ? "" : String.join(",", item.getTags());
-        this.updatedAt = item.getUpdatedAt();
     }
 }

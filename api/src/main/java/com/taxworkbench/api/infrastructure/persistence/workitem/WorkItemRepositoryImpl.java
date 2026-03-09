@@ -6,6 +6,7 @@ import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -17,17 +18,9 @@ public class WorkItemRepositoryImpl implements WorkItemRepository {
 
     @Override
     public WorkItem save(WorkItem workItem) {
-        if (workItem.getId() == null) {
-            WorkItemJpaEntity entity = WorkItemJpaEntity.fromDomain(workItem);
-            WorkItemJpaEntity saved = jpaRepository.save(entity);
-            return saved.toDomain();
-        } else {
-            WorkItemJpaEntity entity = jpaRepository.findById(workItem.getId())
-                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 업무입니다."));
-            entity.update(workItem);
-            jpaRepository.flush(); 
-            return entity.toDomain();
-        }
+        WorkItemJpaEntity entity = WorkItemJpaEntity.fromDomain(workItem);
+        WorkItemJpaEntity saved = jpaRepository.saveAndFlush(entity);
+        return saved.toDomain();
     }
 
     @Override
@@ -35,6 +28,7 @@ public class WorkItemRepositoryImpl implements WorkItemRepository {
         List<WorkItemJpaEntity> entities = workItems.stream()
                 .map(WorkItemJpaEntity::fromDomain)
                 .toList();
+
         return jpaRepository.saveAll(entities).stream()
                 .map(WorkItemJpaEntity::toDomain)
                 .toList();
@@ -48,7 +42,8 @@ public class WorkItemRepositoryImpl implements WorkItemRepository {
     @Override
     public WorkItemPage findAll(WorkItemQuery query) {
         Pageable pageable = PageRequest.of(
-                query.page(), query.size(),
+                query.page(),
+                query.size(),
                 query.sortDir().equalsIgnoreCase("asc")
                         ? Sort.by(query.sortBy()).ascending()
                         : Sort.by(query.sortBy()).descending()

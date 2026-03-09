@@ -1,6 +1,5 @@
 package com.taxworkbench.api.infrastructure.streaming;
 
-import com.taxworkbench.api.domain.workitem.WorkItem;
 import com.taxworkbench.api.domain.workitem.WorkItemQuery;
 import com.taxworkbench.api.infrastructure.persistence.workitem.WorkItemJpaRepository;
 import com.taxworkbench.api.domain.workitem.WorkItemStatus;

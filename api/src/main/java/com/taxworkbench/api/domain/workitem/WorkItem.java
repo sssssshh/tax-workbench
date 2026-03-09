@@ -22,9 +22,8 @@ public class WorkItem {
     private String memo;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private long version; // Optimistic Lock
+    private long version;
 
-    // 정적 팩토리 메서드 - Client 정보를 받아 생성 규칙 적용
     public static WorkItem create(
             Long clientId,
             String clientName,
@@ -54,62 +53,86 @@ public class WorkItem {
         return item;
     }
 
-    // Client tier/type에 따른 생성 규칙
+    public static WorkItem restore(
+            Long id,
+            Long clientId,
+            String clientName,
+            String bizNo,
+            WorkItemType type,
+            WorkItemStatus status,
+            String assignee,
+            LocalDate dueDate,
+            List<String> tags,
+            String memo,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt,
+            long version
+    ) {
+        WorkItem item = new WorkItem();
+        item.id = id;
+        item.clientId = clientId;
+        item.clientName = clientName;
+        item.bizNo = bizNo;
+        item.type = type;
+        item.status = status;
+        item.assignee = assignee;
+        item.dueDate = dueDate;
+        item.tags = tags == null ? new ArrayList<>() : new ArrayList<>(tags);
+        item.memo = memo;
+        item.createdAt = createdAt;
+        item.updatedAt = updatedAt;
+        item.version = version;
+        return item;
+    }
+
     private static void validateCreation(WorkItemType type, ClientTier tier, ClientType clientType) {
-        // VIP 고객은 ETC 타입 불가
         if (tier == ClientTier.VIP && type == WorkItemType.ETC) {
             throw new IllegalArgumentException("VIP 고객에게는 기타(ETC) 업무를 할당할 수 없습니다.");
         }
-        // 개인사업자는 REVIEW 타입 불가
         if (clientType == ClientType.INDIVIDUAL && type == WorkItemType.REVIEW) {
             throw new IllegalArgumentException("개인사업자 고객에게는 검토(REVIEW) 업무를 할당할 수 없습니다.");
         }
     }
 
-    // 상태 변경 - 비즈니스 규칙 포함
     public void changeStatus(WorkItemStatus newStatus) {
         if (this.status == WorkItemStatus.DONE && newStatus == WorkItemStatus.TODO) {
             throw new IllegalStateException("완료된 업무는 TODO로 되돌릴 수 없습니다.");
         }
         this.status = newStatus;
-        this.updatedAt = LocalDateTime.now();
+        touch();
     }
 
     public void updateAssignee(String assignee) {
         this.assignee = assignee;
-        this.updatedAt = LocalDateTime.now();
+        touch();
     }
 
     public void updateDueDate(LocalDate dueDate) {
         this.dueDate = dueDate;
-        this.updatedAt = LocalDateTime.now();
+        touch();
     }
 
     public void updateMemo(String memo) {
         this.memo = memo;
-        this.updatedAt = LocalDateTime.now();
+        touch();
     }
 
     public void updateTags(List<String> tags) {
-        this.tags = new ArrayList<>(tags);
-        this.updatedAt = LocalDateTime.now();
+        this.tags = tags == null ? new ArrayList<>() : new ArrayList<>(tags);
+        touch();
     }
 
-    // Optimistic Lock 버전 체크
     public void checkVersion(long expectedVersion) {
-    if (this.version != expectedVersion) {
-        throw new WorkItemConflictException(this.id, this.version, expectedVersion);
+        if (this.version != expectedVersion) {
+            throw new WorkItemConflictException(this.id, this.version, expectedVersion);
+        }
     }
-}
 
-    public void incrementVersion() {
-        this.version++;
+    private void touch() {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // Getters
     public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
     public Long getClientId() { return clientId; }
     public String getClientName() { return clientName; }
     public String getBizNo() { return bizNo; }
@@ -122,7 +145,4 @@ public class WorkItem {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public long getVersion() { return version; }
-
-    public void setVersion(long version) { this.version = version; }
-    public void setStatus(WorkItemStatus status) { this.status = status; }
 }
