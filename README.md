@@ -115,19 +115,23 @@ Web: http://localhost:5173
 ------------------------------------------------------------------------
 
 # API Overview
-
-GET /api/v1/work-items POST /api/v1/work-items PATCH
-/api/v1/work-items/{id} POST /api/v1/work-items/bulk GET
-/api/v1/work-items/export GET /api/v1/work-items/{id}/audit
-
+```text
+GET /api/v1/work-items -> 업무 목록 조회
+POST /api/v1/work-items -> 업무 생성
+PATCH /api/v1/work-items/{id} -> 업무 수정
+POST /api/v1/work-items/bulk -> 대량 업무 생성
+GET /api/v1/work-items/export -> CSV 다운로드
+GET /api/v1/work-items/{id}/audit -> 변경 이력 조회
+```
 ------------------------------------------------------------------------
 
 # Concurrency Control
 
 Optimistic Locking을 사용하여 WorkItem 동시 수정 충돌을 방지했습니다.
-
-@Version private long version;
-
+```text
+@Version
+private long version;
+```
 충돌 시 HTTP 409 Conflict 반환
 
 ------------------------------------------------------------------------
@@ -144,15 +148,18 @@ StreamingResponseBody 기반 CSV 다운로드
 # Bulk Create
 
 CSV 입력을 통한 대량 WorkItem 생성
-
-clientId,type,assignee,dueDate,memo,tags 1,FILING,Kim,2026-03-31,3월
-신고,vat\|march
-
+```text
+clientId,type,assignee,dueDate,memo,tags
+1,FILING,Kim,2026-03-31,3월 신고,vat\|march
+```
 응답 예시
-
-{ "savedCount": 50, "skippedCount": 3, "errors": \[ "row 4: 존재하지
-않는 clientId", "row 7: 비활성 고객사" \] }
-
+```text
+{
+   "savedCount": 50,
+   "skippedCount": 3,
+   "errors": \[ "row 4: 존재하지않는 clientId", "row 7: 비활성 고객사" \]
+}
+```
 ------------------------------------------------------------------------
 
 # Audit Log
@@ -164,9 +171,11 @@ WorkItem 변경 시 필드 단위 변경 이력을 저장합니다.
 # Validation
 
 Bean Validation 사용
-
-@NotNull @Positive @Size(max=100)
-
+```text
+@NotNull
+@Positive
+@Size(max=100)
+```
 ------------------------------------------------------------------------
 
 # Future Improvements
