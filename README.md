@@ -82,29 +82,20 @@ CSV 데이터를 이용한 **대량 업무 등록**
 
 # Project Structure
 
-api 
- ├ domain 
- │   ├ workitem 
- │   ├ client 
- │   └ audit 
- │ 
- ├ application 
- │   ├ workitem 
- │   └ client 
- │ 
- ├ infrastructure 
- │   ├ persistence 
- │   └ streaming 
- │ 
- └ interfaces 
-     └ api
-
-web 
- ├ components 
- ├ pages 
- ├ hooks 
- ├ api 
- └ types
+api
+│  └─ src/main/java/com/taxworkbench/api
+│     ├─ domain
+│     ├─ application
+│     ├─ infrastructure
+│     └─ interfaces
+└─ web
+   └─ src
+      ├─ api
+      ├─ components
+      ├─ hooks
+      ├─ pages
+      └─ types
+```
 
 ------------------------------------------------------------------------
 
