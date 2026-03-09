@@ -1,8 +1,8 @@
 package com.taxworkbench.api.infrastructure.streaming;
 
+import com.taxworkbench.api.domain.workitem.WorkItem;
 import com.taxworkbench.api.domain.workitem.WorkItemQuery;
-import com.taxworkbench.api.infrastructure.persistence.workitem.WorkItemJpaRepository;
-import com.taxworkbench.api.domain.workitem.WorkItemStatus;
+import com.taxworkbench.api.domain.workitem.WorkItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,56 +12,45 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
-import java.util.stream.Stream;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
 public class CsvExporter {
 
-    private final WorkItemJpaRepository workItemJpaRepository;
+    private final WorkItemRepository workItemRepository;
 
     @Transactional(readOnly = true)
     public void export(WorkItemQuery query, OutputStream outputStream) throws IOException {
-        WorkItemStatus status = query.status();
+        List<WorkItem> items = workItemRepository.findAllForExport(query);
 
         try (BufferedWriter writer = new BufferedWriter(
-                new OutputStreamWriter(outputStream, StandardCharsets.UTF_8));
-             Stream<com.taxworkbench.api.infrastructure.persistence.workitem.WorkItemJpaEntity> stream =
-                     workItemJpaRepository.streamForExport(
-                             query.clientName(),
-                             status,
-                             query.assignee())) {
+                new OutputStreamWriter(outputStream, StandardCharsets.UTF_8))) {
 
-            // BOM - 엑셀 한글 깨짐 방지
             writer.write('\uFEFF');
             writer.write("ID,업체명,사업자번호,업무유형,상태,담당자,마감일,메모,생성일");
             writer.newLine();
 
-            // 진짜 스트리밍 - 1000건씩 DB에서 가져와서 바로 씀
-            stream.forEach(entity -> {
-                try {
-                    writer.write(toCsvRow(entity));
-                    writer.newLine();
-                } catch (IOException e) {
-                    throw new RuntimeException("CSV 스트리밍 중 오류 발생", e);
-                }
-            });
+            for (WorkItem item : items) {
+                writer.write(toCsvRow(item));
+                writer.newLine();
+            }
 
             writer.flush();
         }
     }
 
-    private String toCsvRow(com.taxworkbench.api.infrastructure.persistence.workitem.WorkItemJpaEntity entity) {
+    private String toCsvRow(WorkItem item) {
         return String.join(",",
-                safe(String.valueOf(entity.getId())),
-                safe(entity.getClientName()),
-                safe(entity.getBizNo()),
-                safe(entity.getType().name()),
-                safe(entity.getStatus().name()),
-                safe(entity.getAssignee()),
-                safe(String.valueOf(entity.getDueDate())),
-                safe(entity.getMemo()),
-                safe(String.valueOf(entity.getCreatedAt()))
+                safe(String.valueOf(item.getId())),
+                safe(item.getClientName()),
+                safe(item.getBizNo()),
+                safe(item.getType() == null ? null : item.getType().name()),
+                safe(item.getStatus() == null ? null : item.getStatus().name()),
+                safe(item.getAssignee()),
+                safe(String.valueOf(item.getDueDate())),
+                safe(item.getMemo()),
+                safe(String.valueOf(item.getCreatedAt()))
         );
     }
 

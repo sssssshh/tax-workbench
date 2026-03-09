@@ -8,5 +8,6 @@ public interface ClientRepository {
     Optional<Client> findById(Long id);
     Optional<Client> findByBizNo(String bizNo);
     List<Client> findAll();
+    List<Client> findAllById(List<Long> ids);
     boolean existsByBizNo(String bizNo);
 }

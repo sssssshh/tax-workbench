@@ -23,21 +23,20 @@ public class BulkCreateWorkItemUseCase {
 
     @Transactional
     public int execute(List<CreateWorkItemCommand> commands) {
-        // 필요한 Client ID 목록 수집
         List<Long> clientIds = commands.stream()
                 .map(CreateWorkItemCommand::clientId)
                 .distinct()
                 .toList();
 
-        // Client 한 번에 조회 (N+1 방지)
-        Map<Long, Client> clientMap = clientRepository.findAll().stream()
-                .filter(c -> clientIds.contains(c.getId()))
+        Map<Long, Client> clientMap = clientRepository.findAllById(clientIds).stream()
                 .collect(Collectors.toMap(Client::getId, c -> c));
 
         List<WorkItem> workItems = commands.stream()
                 .map(command -> {
                     Client client = clientMap.get(command.clientId());
-                    if (client == null || !client.isActive()) return null;
+                    if (client == null || !client.isActive()) {
+                        return null;
+                    }
 
                     return WorkItem.create(
                             client.getId(),
@@ -54,11 +53,9 @@ public class BulkCreateWorkItemUseCase {
                 .filter(item -> item != null)
                 .toList();
 
-        // 배치 단위로 저장
         int saved = 0;
         for (int i = 0; i < workItems.size(); i += BATCH_SIZE) {
-            List<WorkItem> batch = workItems.subList(
-                    i, Math.min(i + BATCH_SIZE, workItems.size()));
+            List<WorkItem> batch = workItems.subList(i, Math.min(i + BATCH_SIZE, workItems.size()));
             workItemRepository.saveAll(batch);
             saved += batch.size();
         }

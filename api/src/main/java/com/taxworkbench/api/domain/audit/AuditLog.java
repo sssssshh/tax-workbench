@@ -32,7 +32,28 @@ public class AuditLog {
         return log;
     }
 
-    // Getters
+    public static AuditLog restore(
+            Long id,
+            String entityType,
+            Long entityId,
+            String fieldName,
+            String oldValue,
+            String newValue,
+            String changedBy,
+            LocalDateTime changedAt
+    ) {
+        AuditLog log = new AuditLog();
+        log.id = id;
+        log.entityType = entityType;
+        log.entityId = entityId;
+        log.fieldName = fieldName;
+        log.oldValue = oldValue;
+        log.newValue = newValue;
+        log.changedBy = changedBy;
+        log.changedAt = changedAt;
+        return log;
+    }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getEntityType() { return entityType; }

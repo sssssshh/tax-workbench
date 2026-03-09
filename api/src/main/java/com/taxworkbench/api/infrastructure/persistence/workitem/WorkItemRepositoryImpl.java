@@ -65,7 +65,11 @@ public class WorkItemRepositoryImpl implements WorkItemRepository {
     @Transactional(readOnly = true)
     public List<WorkItem> findAllForExport(WorkItemQuery query) {
         Specification<WorkItemJpaEntity> spec = WorkItemSpecification.of(query);
-        return jpaRepository.findAll(spec).stream()
+        Sort sort = query.sortDir().equalsIgnoreCase("asc")
+                ? Sort.by(query.sortBy()).ascending()
+                : Sort.by(query.sortBy()).descending();
+
+        return jpaRepository.findAll(spec, sort).stream()
                 .map(WorkItemJpaEntity::toDomain)
                 .toList();
     }

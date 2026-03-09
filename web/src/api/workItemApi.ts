@@ -3,7 +3,6 @@ import type { WorkItem, WorkItemPage, WorkItemQuery, AuditLog } from '../types/w
 
 export const workItemApi = {
   findAll: async (query: WorkItemQuery): Promise<WorkItemPage> => {
-    // 빈 값 제거 후 전송
     const params = Object.fromEntries(
       Object.entries(query).filter(([, v]) => v !== undefined && v !== '' && v !== null)
     )
@@ -52,9 +51,13 @@ export const workItemApi = {
 
   export: (query: WorkItemQuery): void => {
     const params = new URLSearchParams()
-    if (query.clientName) params.append('clientName', query.clientName)
-    if (query.status) params.append('status', query.status)
-    if (query.assignee) params.append('assignee', query.assignee)
+
+    Object.entries(query).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params.append(key, String(value))
+      }
+    })
+
     window.open(`http://localhost:8080/api/v1/work-items/export?${params.toString()}`)
   },
 

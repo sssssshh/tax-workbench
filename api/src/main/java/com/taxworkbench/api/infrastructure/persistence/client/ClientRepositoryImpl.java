@@ -4,6 +4,7 @@ import com.taxworkbench.api.domain.client.Client;
 import com.taxworkbench.api.domain.client.ClientRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -33,6 +34,13 @@ public class ClientRepositoryImpl implements ClientRepository {
     @Override
     public List<Client> findAll() {
         return jpaRepository.findAll().stream()
+                .map(ClientJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Client> findAllById(List<Long> ids) {
+        return jpaRepository.findAllById(ids).stream()
                 .map(ClientJpaEntity::toDomain)
                 .toList();
     }

@@ -3,13 +3,13 @@ package com.taxworkbench.api.infrastructure.audit;
 import com.taxworkbench.api.domain.audit.AuditLog;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "audit_logs", indexes = {
         @Index(name = "idx_audit_entity", columnList = "entityType, entityId, changedAt")
 })
-
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -51,6 +51,15 @@ public class AuditLogJpaEntity {
     }
 
     public AuditLog toDomain() {
-        return AuditLog.of(entityType, entityId, fieldName, oldValue, newValue, changedBy);
+        return AuditLog.restore(
+                id,
+                entityType,
+                entityId,
+                fieldName,
+                oldValue,
+                newValue,
+                changedBy,
+                changedAt
+        );
     }
 }
