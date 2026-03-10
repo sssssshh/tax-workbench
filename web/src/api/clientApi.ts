@@ -1,10 +1,18 @@
 import axiosInstance from './axios.ts'
+import { unwrapApiData } from './contracts.ts'
 import type { Client } from '../types/client.ts'
+
+type ClientListPayload = {
+  items: Client[]
+  count: number
+}
 
 export const clientApi = {
   findAll: async (): Promise<Client[]> => {
-    const res = await axiosInstance.get('/api/v1/clients')
-    return res.data.data
+    const payload = unwrapApiData<ClientListPayload | Client[]>(
+      await axiosInstance.get('/api/v1/clients')
+    )
+    return Array.isArray(payload) ? payload : (payload?.items ?? [])
   },
 
   create: async (data: {
@@ -13,7 +21,6 @@ export const clientApi = {
     type: string
     tier: string
   }): Promise<Client> => {
-    const res = await axiosInstance.post('/api/v1/clients', data)
-    return res.data.data
+    return unwrapApiData<Client>(await axiosInstance.post('/api/v1/clients', data))
   },
 }

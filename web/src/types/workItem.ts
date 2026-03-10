@@ -55,9 +55,18 @@ export interface ConflictData {
 }
 
 export interface ConflictError {
-  error: string
+  error?: string
   message: string
-  currentVersion: number
-  expectedVersion: number
-  currentData: WorkItem
+  currentVersion?: number
+  expectedVersion?: number
+  currentData?: WorkItem
+  data?: {
+    code?: string
+    details?: {
+      currentVersion?: number
+      expectedVersion?: number
+      currentData?: WorkItem
+      fieldErrors?: Record<string, string>
+    }
+  }
 }

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { getApiErrorMessages } from '../../api/contracts.ts'
 import { workItemApi } from '../../api/workItemApi'
 
 type Props = {
@@ -83,25 +84,12 @@ export default function BulkCreateModal({ isOpen, onClose, onSuccess }: Props) {
       if (result.savedCount > 0 && onSuccess) {
         onSuccess()
       }
-    } catch (error: any) {
-      const responseData = error?.response?.data
-
-      if (responseData?.data && typeof responseData.data === 'object') {
-        const fieldErrors = Object.entries(responseData.data)
-          .map(([field, message]) => `${field}: ${String(message)}`)
-
-        setSubmitResult({
-          savedCount: 0,
-          skippedCount: 0,
-          errors: fieldErrors.length > 0 ? fieldErrors : ['대량 등록 중 오류가 발생했습니다.'],
-        })
-      } else {
-        setSubmitResult({
-          savedCount: 0,
-          skippedCount: 0,
-          errors: [responseData?.message || '대량 등록 중 오류가 발생했습니다.'],
-        })
-      }
+    } catch (error: unknown) {
+      setSubmitResult({
+        savedCount: 0,
+        skippedCount: 0,
+        errors: getApiErrorMessages(error, '대량 등록 중 오류가 발생했습니다.'),
+      })
     } finally {
       setIsSubmitting(false)
     }

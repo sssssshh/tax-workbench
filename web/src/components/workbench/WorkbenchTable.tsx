@@ -1,12 +1,12 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import type { WorkItem, WorkItemStatus, ConflictError, WorkItemQuery } from '../../types/workItem.ts'
+import type { WorkItem, WorkItemStatus, WorkItemQuery } from '../../types/workItem.ts'
 import { useUpdateWorkItem } from '../../hooks/useWorkItems.ts'
 import { useKeyboardNav } from '../../hooks/useKeyboardNav.ts'
 import InlineEditor from './InlineEditor.tsx'
 import ConflictModal from '../common/ConflictModal.tsx'
 import { useNavigate } from 'react-router-dom'
-import { AxiosError } from 'axios'
+import { getConflictCurrentData } from '../../api/contracts.ts'
 
 interface Props {
   items: WorkItem[]
@@ -80,12 +80,13 @@ export default function WorkbenchTable({ items, query, onQueryChange }: Props) {
         data: { [field]: newValue, expectedVersion: item.version },
       })
     } catch (err) {
-      const error = err as AxiosError<ConflictError>
-      if (error.response?.status === 409 && error.response.data.currentData) {
+      const serverItem = getConflictCurrentData<WorkItem>(err)
+
+      if (serverItem) {
         setConflict({
           fieldName: field,
           myValue: newValue,
-          serverItem: error.response.data.currentData,
+          serverItem,
           itemId: item.id,
         })
       }

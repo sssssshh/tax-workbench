@@ -1,4 +1,5 @@
 import axiosInstance from './axios.ts'
+import { unwrapApiData } from './contracts.ts'
 import type { WorkItem, WorkItemPage, WorkItemQuery, AuditLog } from '../types/workItem.ts'
 
 export type BulkCreateApiResponse = {
@@ -12,8 +13,7 @@ export const workItemApi = {
     const params = Object.fromEntries(
       Object.entries(query).filter(([, v]) => v !== undefined && v !== '' && v !== null)
     )
-    const res = await axiosInstance.get('/api/v1/work-items', { params })
-    return res.data.data
+    return unwrapApiData<WorkItemPage>(await axiosInstance.get('/api/v1/work-items', { params }))
   },
 
   create: async (data: {
@@ -24,8 +24,7 @@ export const workItemApi = {
     memo: string
     tags: string[]
   }): Promise<WorkItem> => {
-    const res = await axiosInstance.post('/api/v1/work-items', data)
-    return res.data.data
+    return unwrapApiData<WorkItem>(await axiosInstance.post('/api/v1/work-items', data))
   },
 
   update: async (
@@ -39,8 +38,7 @@ export const workItemApi = {
       expectedVersion: number
     }
   ): Promise<WorkItem> => {
-    const res = await axiosInstance.patch(`/api/v1/work-items/${id}`, data)
-    return res.data.data
+    return unwrapApiData<WorkItem>(await axiosInstance.patch(`/api/v1/work-items/${id}`, data))
   },
 
   bulkCreate: async (items: {
@@ -51,8 +49,9 @@ export const workItemApi = {
     memo: string
     tags: string[]
   }[]): Promise<BulkCreateApiResponse> => {
-    const res = await axiosInstance.post('/api/v1/work-items/bulk', { items })
-    return res.data.data
+    return unwrapApiData<BulkCreateApiResponse>(
+      await axiosInstance.post('/api/v1/work-items/bulk', { items })
+    )
   },
 
   export: (query: WorkItemQuery): void => {
@@ -68,7 +67,6 @@ export const workItemApi = {
   },
 
   getAuditLogs: async (id: number): Promise<AuditLog[]> => {
-    const res = await axiosInstance.get(`/api/v1/work-items/${id}/audit`)
-    return res.data.data
+    return unwrapApiData<AuditLog[]>(await axiosInstance.get(`/api/v1/work-items/${id}/audit`))
   },
 }
