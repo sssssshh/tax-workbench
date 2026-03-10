@@ -80,5 +80,10 @@ public class WorkItemRequest {
             @NotEmpty(message = "items는 비어 있을 수 없습니다.")
             List<@Valid Create> items
     ) {
+        public List<CreateWorkItemCommand> toCommands() {
+            return items.stream()
+                    .map(Create::toCommand)
+                    .toList();
+        }
     }
 }

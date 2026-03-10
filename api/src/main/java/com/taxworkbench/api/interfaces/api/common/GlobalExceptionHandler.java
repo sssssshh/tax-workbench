@@ -12,8 +12,8 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -24,53 +24,88 @@ public class GlobalExceptionHandler {
     private final WorkItemRepository workItemRepository;
 
     @ExceptionHandler(WorkItemConflictException.class)
-    public ResponseEntity<?> handleConflict(WorkItemConflictException e) {
-        Map<String, Object> body = new HashMap<>();
-        body.put("error", "OPTIMISTIC_LOCK_CONFLICT");
-        body.put("message", e.getMessage());
-        body.put("currentVersion", e.getCurrentVersion());
-        body.put("expectedVersion", e.getExpectedVersion());
+    public ResponseEntity<ApiResponse<ApiError>> handleConflict(WorkItemConflictException e) {
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("currentVersion", e.getCurrentVersion());
+        details.put("expectedVersion", e.getExpectedVersion());
 
         workItemRepository.findById(e.getWorkItemId()).ifPresent(item ->
-                body.put("currentData", WorkItemResponse.from(item))
+                details.put("currentData", WorkItemResponse.from(item))
         );
 
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+        return error(
+                HttpStatus.CONFLICT,
+                e.getMessage(),
+                ApiError.of("OPTIMISTIC_LOCK_CONFLICT", details)
+        );
     }
 
     @ExceptionHandler({
             ObjectOptimisticLockingFailureException.class,
             OptimisticLockException.class
     })
-    public ResponseEntity<?> handleJpaOptimisticLock(Exception e) {
-        Map<String, Object> body = new HashMap<>();
-        body.put("error", "OPTIMISTIC_LOCK_CONFLICT");
-        body.put("message", "다른 사용자가 먼저 수정했습니다. 최신 데이터를 확인한 뒤 다시 시도해주세요.");
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    public ResponseEntity<ApiResponse<ApiError>> handleJpaOptimisticLock(Exception e) {
+        return error(
+                HttpStatus.CONFLICT,
+                "다른 사용자가 먼저 수정했습니다. 최신 데이터를 확인한 뒤 다시 시도해주세요.",
+                ApiError.of("OPTIMISTIC_LOCK_CONFLICT")
+        );
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<Map<String, String>>> handleValidation(
+    public ResponseEntity<ApiResponse<ApiError>> handleValidation(
             MethodArgumentNotValidException e
     ) {
-        Map<String, String> errors = new LinkedHashMap<>();
+        Map<String, String> fieldErrors = new LinkedHashMap<>();
 
         for (FieldError fieldError : e.getBindingResult().getFieldErrors()) {
-            errors.putIfAbsent(fieldError.getField(), fieldError.getDefaultMessage());
+            fieldErrors.putIfAbsent(fieldError.getField(), fieldError.getDefaultMessage());
         }
 
-        return ResponseEntity.badRequest().body(
-                ApiResponse.fail("입력값이 올바르지 않습니다.")
+        return error(
+                HttpStatus.BAD_REQUEST,
+                "입력값이 올바르지 않습니다.",
+                ApiError.of("VALIDATION_ERROR", Map.of("fieldErrors", fieldErrors))
         );
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<?> handleIllegalArgument(IllegalArgumentException e) {
-        return ResponseEntity.badRequest().body(ApiResponse.fail(e.getMessage()));
+    public ResponseEntity<ApiResponse<ApiError>> handleIllegalArgument(IllegalArgumentException e) {
+        return error(HttpStatus.BAD_REQUEST, e.getMessage(), ApiError.of("INVALID_ARGUMENT"));
     }
 
     @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<?> handleIllegalState(IllegalStateException e) {
-        return ResponseEntity.badRequest().body(ApiResponse.fail(e.getMessage()));
+    public ResponseEntity<ApiResponse<ApiError>> handleIllegalState(IllegalStateException e) {
+        return error(HttpStatus.BAD_REQUEST, e.getMessage(), ApiError.of("INVALID_STATE"));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<ApiError>> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("parameter", e.getName());
+        details.put("value", e.getValue());
+
+        return error(
+                HttpStatus.BAD_REQUEST,
+                "요청 파라미터 형식이 올바르지 않습니다.",
+                ApiError.of("INVALID_PARAMETER", details)
+        );
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<ApiError>> handleUnexpected(Exception e) {
+        return error(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "서버 내부 오류가 발생했습니다.",
+                ApiError.of("INTERNAL_SERVER_ERROR")
+        );
+    }
+
+    private ResponseEntity<ApiResponse<ApiError>> error(
+            HttpStatus status,
+            String message,
+            ApiError error
+    ) {
+        return ResponseEntity.status(status).body(ApiResponse.fail(message, error));
     }
 }

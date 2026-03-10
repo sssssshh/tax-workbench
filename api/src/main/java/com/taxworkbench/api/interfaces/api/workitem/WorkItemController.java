@@ -1,22 +1,17 @@
 package com.taxworkbench.api.interfaces.api.workitem;
 
+import com.taxworkbench.api.application.audit.QueryAuditLogUseCase;
 import com.taxworkbench.api.application.workitem.*;
-import com.taxworkbench.api.domain.audit.AuditLog;
-import com.taxworkbench.api.domain.audit.AuditRepository;
-import com.taxworkbench.api.domain.workitem.WorkItemPage;
-import com.taxworkbench.api.domain.workitem.WorkItemQuery;
-import com.taxworkbench.api.domain.workitem.WorkItemStatus;
 import com.taxworkbench.api.interfaces.api.common.ApiResponse;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
-import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/work-items")
@@ -28,41 +23,15 @@ public class WorkItemController {
     private final QueryWorkItemUseCase queryWorkItemUseCase;
     private final BulkCreateWorkItemUseCase bulkCreateWorkItemUseCase;
     private final ExportWorkItemUseCase exportWorkItemUseCase;
-    private final AuditRepository auditRepository;
+    private final QueryAuditLogUseCase queryAuditLogUseCase;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Map<String, Object>>> findAll(
-            @RequestParam(required = false) String clientName,
-            @RequestParam(required = false) WorkItemStatus status,
-            @RequestParam(required = false) String assignee,
-            @RequestParam(required = false) String dueDateFrom,
-            @RequestParam(required = false) String dueDateTo,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir
+    public ResponseEntity<ApiResponse<WorkItemPageResponse>> findAll(
+            @Valid @ModelAttribute WorkItemQueryRequest request
     ) {
-        WorkItemQuery query = new WorkItemQuery(
-                clientName,
-                status,
-                assignee,
-                dueDateFrom != null ? LocalDate.parse(dueDateFrom) : null,
-                dueDateTo != null ? LocalDate.parse(dueDateTo) : null,
-                page,
-                size,
-                sortBy,
-                sortDir
-        );
-
-        WorkItemPage result = queryWorkItemUseCase.execute(query);
-
-        return ResponseEntity.ok(ApiResponse.ok(Map.of(
-                "content", result.content().stream().map(WorkItemResponse::from).toList(),
-                "totalElements", result.totalElements(),
-                "totalPages", result.totalPages(),
-                "currentPage", result.currentPage(),
-                "size", result.size()
-        )));
+        return ResponseEntity.ok(ApiResponse.ok(
+                WorkItemPageResponse.from(queryWorkItemUseCase.execute(request.toQuery()))
+        ));
     }
 
     @PostMapping
@@ -83,47 +52,28 @@ public class WorkItemController {
     @PostMapping("/bulk")
     public ResponseEntity<ApiResponse<BulkCreateResponse>> bulkCreate(
             @Valid @RequestBody WorkItemRequest.BulkCreate request) {
-        List<CreateWorkItemCommand> commands = request.items().stream()
-                .map(WorkItemRequest.Create::toCommand)
-                .toList();
-
-        BulkCreateResult result = bulkCreateWorkItemUseCase.execute(commands);
-
-        return ResponseEntity.ok(ApiResponse.ok(BulkCreateResponse.from(result)));
+        return ResponseEntity.ok(ApiResponse.ok(
+                BulkCreateResponse.from(bulkCreateWorkItemUseCase.execute(request.toCommands()))
+        ));
     }
 
     @GetMapping("/export")
     public StreamingResponseBody export(
-            @RequestParam(required = false) String clientName,
-            @RequestParam(required = false) WorkItemStatus status,
-            @RequestParam(required = false) String assignee,
-            @RequestParam(required = false) String dueDateFrom,
-            @RequestParam(required = false) String dueDateTo,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir,
+            @ModelAttribute WorkItemQueryRequest request,
             HttpServletResponse response
     ) {
         response.setContentType("text/csv;charset=UTF-8");
         response.setHeader("Content-Disposition", "attachment; filename=workitems.csv");
 
-        WorkItemQuery query = new WorkItemQuery(
-                clientName,
-                status,
-                assignee,
-                dueDateFrom != null ? LocalDate.parse(dueDateFrom) : null,
-                dueDateTo != null ? LocalDate.parse(dueDateTo) : null,
-                0,
-                Integer.MAX_VALUE,
-                sortBy,
-                sortDir
-        );
-
-        return outputStream -> exportWorkItemUseCase.execute(query, outputStream);
+        return outputStream -> exportWorkItemUseCase.execute(request.toExportQuery(), outputStream);
     }
 
     @GetMapping("/{id}/audit")
-    public ResponseEntity<ApiResponse<List<AuditLog>>> getAuditLogs(@PathVariable Long id) {
-        List<AuditLog> logs = auditRepository.findByEntityTypeAndEntityId("WorkItem", id);
-        return ResponseEntity.ok(ApiResponse.ok(logs));
+    public ResponseEntity<ApiResponse<List<AuditLogResponse>>> getAuditLogs(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                queryAuditLogUseCase.findWorkItemAuditLogs(id).stream()
+                        .map(AuditLogResponse::from)
+                        .toList()
+        ));
     }
 }
